@@ -97,26 +97,35 @@ def call_predict(payload: dict) -> dict:
 
 
 def plot_curves(results: dict, model_name: str) -> plt.Figure:
-    """
-    Build a 1×3 matplotlib figure with:
-      - Loss curves   (train vs val)
-      - Accuracy curves (train vs val)
-      - AUC curves    (train vs val)
-
-    Return the Figure object so Streamlit can display it.
-    """
     fig, axes = plt.subplots(1, 3, figsize=(15, 4))
     epochs_range = range(1, len(results["train_losses"]) + 1)
 
     # Loss
-    # axes[0]: plot train_losses and val_losses
-    # label axes, add legend, set title
+    axes[0].plot(epochs_range, results["train_losses"], label="Train", marker="o", markersize=3)
+    axes[0].plot(epochs_range, results["val_losses"],   label="Val",   marker="o", markersize=3)
+    axes[0].set_title("Loss")
+    axes[0].set_xlabel("Epoch")
+    axes[0].set_ylabel("Loss")
+    axes[0].legend()
+    axes[0].xaxis.set_major_locator(mticker.MaxNLocator(integer=True))
 
     # Accuracy
-    # axes[1]: plot train_accs and val_accs
+    axes[1].plot(epochs_range, results["train_accs"], label="Train", marker="o", markersize=3)
+    axes[1].plot(epochs_range, results["val_accs"],   label="Val",   marker="o", markersize=3)
+    axes[1].set_title("Accuracy")
+    axes[1].set_xlabel("Epoch")
+    axes[1].set_ylabel("Accuracy")
+    axes[1].legend()
+    axes[1].xaxis.set_major_locator(mticker.MaxNLocator(integer=True))
 
     # AUC
-    # axes[2]: plot train_aucs and val_aucs
+    axes[2].plot(epochs_range, results["train_aucs"], label="Train", marker="o", markersize=3)
+    axes[2].plot(epochs_range, results["val_aucs"],   label="Val",   marker="o", markersize=3)
+    axes[2].set_title("AUC")
+    axes[2].set_xlabel("Epoch")
+    axes[2].set_ylabel("AUC")
+    axes[2].legend()
+    axes[2].xaxis.set_major_locator(mticker.MaxNLocator(integer=True))
 
     fig.suptitle(f"{model_name} — Training curves", fontsize=14, fontweight="bold")
     fig.tight_layout()
@@ -124,12 +133,30 @@ def plot_curves(results: dict, model_name: str) -> plt.Figure:
 
 
 def plot_confusion_matrix(results: dict) -> plt.Figure:
-    """
-    Optional: build a confusion matrix figure from the last validation pass.
-    You may need to add TP/FP/TN/FN counts to the /train response for this.
-    """
+    tp = results.get("tp", 0)
+    fp = results.get("fp", 0)
+    tn = results.get("tn", 0)
+    fn = results.get("fn", 0)
+
+    matrix = [[tp, fp], [fn, tn]]
+    labels = ["PNEUMONIA", "NORMAL"]
+
     fig, ax = plt.subplots(figsize=(4, 4))
-    # build confusion matrix
+    im = ax.imshow(matrix, interpolation="nearest", cmap=plt.cm.Blues)
+    fig.colorbar(im, ax=ax)
+
+    ax.set_xticks([0, 1]); ax.set_xticklabels(labels)
+    ax.set_yticks([0, 1]); ax.set_yticklabels(labels)
+    ax.set_xlabel("Predicted label")
+    ax.set_ylabel("True label")
+    ax.set_title("Confusion Matrix (last val epoch)")
+
+    for i, row in enumerate(matrix):
+        for j, val in enumerate(row):
+            ax.text(j, i, str(val), ha="center", va="center",
+                    color="white" if val > (max(tp, fp, tn, fn) / 2) else "black")
+
+    fig.tight_layout()
     return fig
 
 

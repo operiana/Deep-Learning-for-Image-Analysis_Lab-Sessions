@@ -60,6 +60,7 @@ from sklearn.metrics import roc_auc_score
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 import numpy as np
+from tqdm import tqdm
 
 from models import MODEL_REGISTRY
 
@@ -71,11 +72,11 @@ app = FastAPI(title="Pneumonia Detection API")
 ROOT        = Path(__file__).resolve().parent.parent
 TRAIN_DIR   = ROOT / "data" / "train"
 VAL_DIR     = ROOT / "data" / "val"
-TEST_DIR    = ROOT / "data" / "test_for_students"
+TEST_DIR    = ROOT / "submission" / "test_for_students"
 WEIGHTS_DIR = ROOT / "api" / "weights"
 WEIGHTS_DIR.mkdir(exist_ok=True)
 
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else ("mps" if torch.mps.is_available() else "cpu"))
 
 
 # ── Request / Response schemas ─────────────────────────────────────────────────
@@ -130,15 +131,22 @@ def get_transforms(image_size: int, augment: bool = False):
     if augment:
         return transforms.Compose([
             # resize to image_size
+            transforms.Resize((image_size, image_size)),
             # random augmentations
+            transforms.RandomAffine(30, translate=(.05, .05)),
             # ToTensor
+            transforms.ToTensor(),
             # normalize
+            normalize
         ])
     else:
         return transforms.Compose([
             # resize to image_size
+            transforms.Resize((image_size, image_size)),
             # ToTensor
+            transforms.ToTensor(),
             # normalize
+            normalize
         ])
 
 
@@ -241,7 +249,7 @@ def train(req: TrainRequest):
     train_aucs,   val_aucs     = [], []
     best_val_auc = 0.0
 
-    for epoch in range(req.epochs):
+    for epoch in tqdm(range(req.epochs)):
         tr_loss, tr_acc, tr_auc = train_one_epoch(model, train_loader, optimizer, criterion)
         vl_loss, vl_acc, vl_auc = evaluate(model, val_loader, criterion)
 
