@@ -56,6 +56,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
+from torchvision.transforms import v2
 from sklearn.metrics import roc_auc_score
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
@@ -130,10 +131,17 @@ def get_transforms(image_size: int, augment: bool = False):
 
     if augment:
         return transforms.Compose([
-            # resize to image_size
-            transforms.Resize((image_size, image_size)),
+            
             # random augmentations
             transforms.RandomAffine(30, translate=(.05, .05)),
+            transforms.RandomHorizontalFlip(p=0.5),
+            v2.RandomZoomOut(
+                fill=0,           # valeur de remplissage (0 = noir)
+                side_range=(1.0, 1.10),  # facteur de zoom out (1x à 4x la taille originale)
+                p=0.5             # probabilité d'application
+            ),
+            # resize to image_size
+            transforms.Resize((image_size, image_size)),
             # ToTensor
             transforms.ToTensor(),
             # normalize
